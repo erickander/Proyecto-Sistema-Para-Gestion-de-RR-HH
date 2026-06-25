@@ -2,11 +2,16 @@
 
 @section('content')
 <div class="dashboard-header">
-    <h1>IA y Analisis de CV</h1>
-    <p>Ranking de candidatos analizados por Gemini, con decision de contratacion.</p>
+    <h1>IA y Analisis de Candidatos</h1>
+    <p>Ranking de candidatos analizados por Gemini con CV, test por vacante y decision de contratacion.</p>
 </div>
 
 @if(session('status')) <div class="alert-success">{{ session('status') }}</div> @endif
+
+<div class="chart-card">
+    <h3>Comparativa de mejores postulantes</h3>
+    <canvas id="rankingIaChart"></canvas>
+</div>
 
 <div class="table-container">
     <h3>Ranking de candidatos</h3>
@@ -15,7 +20,9 @@
             <tr>
                 <th>Candidato</th>
                 <th>Vacante</th>
-                <th>Puntaje</th>
+                <th>Final</th>
+                <th>CV</th>
+                <th>Test</th>
                 <th>Recomendacion</th>
                 <th>Analisis</th>
                 <th>Decision</th>
@@ -33,6 +40,8 @@
                     </td>
                     <td>{{ $postulacion?->vacante?->titulo }}</td>
                     <td><span class="score-badge">{{ number_format($item->puntuacion_general, 2) }}</span></td>
+                    <td>{{ number_format($item->puntaje_cv ?? 0, 2) }}</td>
+                    <td>{{ number_format($item->puntaje_test ?? 0, 2) }}</td>
                     <td><span class="status-pill">{{ $item->recomendacion }}</span></td>
                     <td>
                         <div class="analysis-preview">
@@ -49,7 +58,7 @@
                                     <div>
                                         <span>Analisis IA</span>
                                         <h2 id="{{ $modalId }}-title">{{ $candidato?->nombres }} {{ $candidato?->apellidos }}</h2>
-                                        <p>{{ $postulacion?->vacante?->titulo }} - Puntaje {{ number_format($item->puntuacion_general, 2) }}</p>
+                                        <p>{{ $postulacion?->vacante?->titulo }} - Puntaje final {{ number_format($item->puntuacion_general, 2) }}</p>
                                     </div>
                                     <button class="modal-close" type="button" aria-label="Cerrar analisis" data-modal-close>&times;</button>
                                 </header>
@@ -57,8 +66,16 @@
                                 <div class="analysis-modal__body">
                                     <div class="analysis-kpis">
                                         <div>
-                                            <span>Puntaje</span>
+                                            <span>Puntaje final</span>
                                             <strong>{{ number_format($item->puntuacion_general, 2) }}</strong>
+                                        </div>
+                                        <div>
+                                            <span>Puntaje CV</span>
+                                            <strong>{{ number_format($item->puntaje_cv ?? 0, 2) }}</strong>
+                                        </div>
+                                        <div>
+                                            <span>Puntaje test</span>
+                                            <strong>{{ number_format($item->puntaje_test ?? 0, 2) }}</strong>
                                         </div>
                                         <div>
                                             <span>Recomendacion</span>
@@ -92,6 +109,24 @@
                                             <p>{{ $item->debilidades ?: 'Sin debilidades registradas' }}</p>
                                         </article>
                                         <article class="analysis-card analysis-card--wide">
+                                            <span>Analisis del test</span>
+                                            <p>{{ $item->analisis_test ?: 'Sin analisis de test registrado' }}</p>
+                                        </article>
+                                        @if($postulacion?->respuestasTest?->isNotEmpty())
+                                            <article class="analysis-card analysis-card--wide">
+                                                <span>Respuestas del test</span>
+                                                <div class="test-answer-list">
+                                                    @foreach($postulacion->respuestasTest as $respuesta)
+                                                        <div>
+                                                            <strong>{{ $respuesta->pregunta?->pregunta }}</strong>
+                                                            <p>{{ $respuesta->respuesta }}</p>
+                                                            <small>Puntaje IA: {{ $respuesta->puntaje_ia !== null ? number_format($respuesta->puntaje_ia, 2) : 'Pendiente' }} - {{ $respuesta->observacion_ia }}</small>
+                                                        </div>
+                                                    @endforeach
+                                                </div>
+                                            </article>
+                                        @endif
+                                        <article class="analysis-card analysis-card--wide">
                                             <span>Observaciones IA</span>
                                             <p>{{ $item->observaciones ?: 'Sin observaciones registradas' }}</p>
                                         </article>
@@ -109,12 +144,12 @@
                     </td>
                     <td class="actions-cell">
                         <details class="action-drawer">
-                            <summary>Reanalizar CV</summary>
+                            <summary>Reanalizar CV y test</summary>
                             <form class="action-form" action="{{ route('ia.reanalyze', $postulacion) }}" method="POST">
                                 @csrf
                                 <label class="check-label">
                                     <input type="checkbox" name="consentimiento" value="1" required>
-                                    Confirmo que existe autorizacion para enviar este CV a Gemini.
+                                    Confirmo que existe autorizacion para enviar este CV y respuestas del test a Gemini.
                                 </label>
                                 <button class="btn-primary" type="submit">Ejecutar reanalisis</button>
                             </form>
@@ -148,9 +183,16 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="6">Sin analisis registrados.</td></tr>
+                <tr><td colspan="8">Sin analisis registrados.</td></tr>
             @endforelse
         </tbody>
     </table>
 </div>
+
+<script>
+    window.rankingIaLabels = @json($rankingLabels);
+    window.rankingIaFinalData = @json($rankingFinalData);
+    window.rankingIaCvData = @json($rankingCvData);
+    window.rankingIaTestData = @json($rankingTestData);
+</script>
 @endsection

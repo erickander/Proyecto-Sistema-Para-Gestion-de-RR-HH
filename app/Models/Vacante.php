@@ -38,6 +38,18 @@ class Vacante extends Model
         return $this->hasMany(Postulacion::class, 'id_vacante', 'id_vacante');
     }
 
+    public function tests()
+    {
+        return $this->hasMany(TestVacante::class, 'id_vacante', 'id_vacante');
+    }
+
+    public function testActivo()
+    {
+        return $this->hasOne(TestVacante::class, 'id_vacante', 'id_vacante')
+            ->where('estado', 'ACTIVO')
+            ->latest('id_test');
+    }
+
     public function departamento()
     {
         return $this->belongsTo(Departamento::class, 'id_departamento', 'id_departamento');

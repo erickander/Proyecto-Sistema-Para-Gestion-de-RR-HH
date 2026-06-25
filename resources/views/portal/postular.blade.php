@@ -15,6 +15,13 @@
         <form class="apply-form" action="{{ route('portal.postular', $vacante) }}" method="POST" enctype="multipart/form-data">
             @csrf
             <h2>Postularse</h2>
+            @if($errors->any())
+                <div class="form-errors">
+                    @foreach($errors->all() as $error)
+                        <p>{{ $error }}</p>
+                    @endforeach
+                </div>
+            @endif
             <label>Nombres<input name="nombres" required></label>
             <label>Apellidos<input name="apellidos" required></label>
             <label>Cedula<input name="cedula"></label>
@@ -24,9 +31,9 @@
             <label>CV PDF<input type="file" name="cv" accept="application/pdf" required></label>
             <label class="consent-check">
                 <input type="checkbox" name="consentimiento_ia" value="1" required>
-                Autorizo que mi CV sea analizado con IA para evaluar mi postulacion.
+                Autorizo que mi CV y el test de la vacante sean analizados con IA para evaluar mi postulacion.
             </label>
-            <button type="submit">Enviar postulacion</button>
+            <button type="submit">Enviar postulacion y continuar al test</button>
         </form>
     </div>
 </section>

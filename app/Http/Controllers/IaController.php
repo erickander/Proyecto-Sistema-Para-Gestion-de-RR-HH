@@ -21,12 +21,21 @@ class IaController extends Controller
 {
     public function index()
     {
+        $ranking = AnalisisIa::with('postulacion.candidato', 'postulacion.vacante')
+            ->orderByDesc('puntuacion_general')
+            ->take(8)
+            ->get();
+
         return view('modules.ia.index', [
-            'analisis' => AnalisisIa::with('postulacion.candidato', 'postulacion.vacante')
+            'analisis' => AnalisisIa::with('postulacion.candidato', 'postulacion.vacante', 'postulacion.respuestasTest.pregunta')
                 ->orderByDesc('puntuacion_general')
                 ->latest('fecha_analisis')
                 ->paginate(10),
             'departamentos' => Departamento::orderBy('nombre_departamento')->get(),
+            'rankingLabels' => $ranking->map(fn ($item) => trim(($item->postulacion?->candidato?->nombres ?? '').' '.($item->postulacion?->candidato?->apellidos ?? '')))->values(),
+            'rankingFinalData' => $ranking->pluck('puntuacion_general')->map(fn ($score) => (float) $score)->values(),
+            'rankingCvData' => $ranking->pluck('puntaje_cv')->map(fn ($score) => (float) $score)->values(),
+            'rankingTestData' => $ranking->pluck('puntaje_test')->map(fn ($score) => (float) $score)->values(),
         ]);
     }
 
@@ -36,7 +45,7 @@ class IaController extends Controller
             'consentimiento' => ['accepted'],
         ]);
 
-        $postulacion->load('candidato', 'vacante');
+        $postulacion->load('candidato', 'vacante', 'respuestasTest.pregunta');
         $cvPath = $postulacion->candidato?->cv_url;
 
         if (! $cvPath || ! Storage::disk('public')->exists($cvPath)) {

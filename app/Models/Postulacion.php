@@ -18,12 +18,15 @@ class Postulacion extends Model
         'fecha_postulacion',
         'estado',
         'observaciones',
+        'token_test',
+        'fecha_test',
     ];
 
     protected function casts(): array
     {
         return [
             'fecha_postulacion' => 'datetime',
+            'fecha_test' => 'datetime',
         ];
     }
 
@@ -40,5 +43,10 @@ class Postulacion extends Model
     public function analisisIa()
     {
         return $this->hasOne(AnalisisIa::class, 'id_postulacion', 'id_postulacion');
+    }
+
+    public function respuestasTest()
+    {
+        return $this->hasMany(TestRespuesta::class, 'id_postulacion', 'id_postulacion');
     }
 }

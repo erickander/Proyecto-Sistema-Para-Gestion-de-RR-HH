@@ -8,6 +8,8 @@ Route::get('/', [PortalEmpleoController::class, 'index'])->name('portal.index');
 Route::get('/vacantes', [PortalEmpleoController::class, 'vacantes'])->name('portal.vacantes');
 Route::get('/vacantes/{vacante}', [PortalEmpleoController::class, 'show'])->name('portal.vacantes.show');
 Route::post('/vacantes/{vacante}/postular', [PortalEmpleoController::class, 'store'])->name('portal.postular');
+Route::get('/postulaciones/{postulacion}/test/{token}', [PortalEmpleoController::class, 'showTest'])->name('portal.test.show');
+Route::post('/postulaciones/{postulacion}/test/{token}', [PortalEmpleoController::class, 'submitTest'])->name('portal.test.submit');
 Route::get('/postulacion-enviada', [PortalEmpleoController::class, 'gracias'])->name('portal.gracias');
 
 require __DIR__.'/auth.php';

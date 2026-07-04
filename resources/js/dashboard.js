@@ -143,6 +143,90 @@ if (ctx4) {
     });
 }
 
+const ctx5 = document.getElementById('nominaMensualChart');
+
+if (ctx5) {
+    new Chart(ctx5, {
+        type: 'bar',
+        data: {
+            labels: window.nominaMensualLabels || [],
+            datasets: [{
+                label: 'Total nomina',
+                data: window.nominaMensualData || [],
+                backgroundColor: chartPrimary,
+                borderRadius: 6,
+                maxBarThickness: 44,
+            }],
+        },
+        options: commonOptions,
+    });
+}
+
+const ctx6 = document.getElementById('nominaEstadoChart');
+
+if (ctx6) {
+    new Chart(ctx6, {
+        type: 'doughnut',
+        data: {
+            labels: window.nominaEstadoLabels || [],
+            datasets: [{
+                data: window.nominaEstadoData || [],
+                backgroundColor: ['#64748b', '#1d4ed8', '#0f766e', '#16a34a'],
+                borderColor: '#ffffff',
+                borderWidth: 3,
+            }],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: commonOptions.plugins,
+        },
+    });
+}
+
+const ctx7 = document.getElementById('reportTrendChart');
+
+if (ctx7) {
+    new Chart(ctx7, {
+        type: 'line',
+        data: {
+            labels: window.reportTrendLabels || [],
+            datasets: [{
+                label: window.reportTrendLabel || 'Registros',
+                data: window.reportTrendData || [],
+                borderColor: chartPrimary,
+                backgroundColor: 'rgba(29,78,216,.12)',
+                pointBackgroundColor: chartPrimary,
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2,
+                pointRadius: 4,
+                fill: true,
+                tension: 0.35,
+            }],
+        },
+        options: commonOptions,
+    });
+}
+
+const ctx8 = document.getElementById('reportSummaryChart');
+
+if (ctx8) {
+    new Chart(ctx8, {
+        type: 'bar',
+        data: {
+            labels: window.reportSummaryLabels || [],
+            datasets: [{
+                label: 'Registros',
+                data: window.reportSummaryData || [],
+                backgroundColor: [chartPrimary, '#0f766e', '#9333ea', '#f59e0b'],
+                borderRadius: 6,
+                maxBarThickness: 44,
+            }],
+        },
+        options: commonOptions,
+    });
+}
+
 const closeAnalysisModal = (modal) => {
     if (!modal) {
         return;
@@ -172,6 +256,7 @@ document.querySelectorAll('[data-modal-target]').forEach((button) => {
         }
 
         closeOpenActionDrawers();
+        document.body.appendChild(modal);
         modal.hidden = false;
         document.body.classList.add('modal-open');
         modal.querySelector('button[data-modal-close]')?.focus();
@@ -221,6 +306,39 @@ document.addEventListener('keydown', (event) => {
     closeOpenActionDrawers();
 });
 
+document.querySelectorAll('form[data-confirm]').forEach((form) => {
+    form.addEventListener('submit', (event) => {
+        if (!confirm(form.dataset.confirm || 'Confirme esta accion.')) {
+            event.preventDefault();
+        }
+    });
+});
+
+document.querySelectorAll('form[data-ai-loading]').forEach((form) => {
+    form.addEventListener('submit', () => {
+        const overlay = document.querySelector('[data-ai-loading-overlay]');
+
+        if (!form.checkValidity()) {
+            return;
+        }
+
+        closeAnalysisModal(document.querySelector('.analysis-modal:not([hidden])'));
+        closeOpenActionDrawers();
+
+        if (overlay) {
+            document.body.appendChild(overlay);
+            overlay.hidden = false;
+            document.body.classList.add('ai-loading-active');
+        }
+
+        form.querySelectorAll('button').forEach((button) => {
+            button.disabled = true;
+            button.dataset.originalText = button.textContent;
+            button.textContent = 'Procesando...';
+        });
+    });
+});
+
 const addOptionInput = (builder) => {
     const list = builder?.querySelector('[data-options-list]');
 
@@ -229,14 +347,25 @@ const addOptionInput = (builder) => {
     }
 
     const label = document.createElement('label');
+    const radio = document.createElement('input');
     const input = document.createElement('input');
-    const count = list.querySelectorAll('input').length + 1;
+    const count = list.querySelectorAll('input:not([type="radio"])').length;
     const prefix = builder.dataset.optionPrefix || 'opciones';
+    const correctName = prefix === 'opciones'
+        ? 'respuesta_correcta'
+        : prefix.replace('[opciones]', '[respuesta_correcta]');
 
+    label.className = 'option-row';
+    radio.type = 'radio';
+    radio.name = correctName;
+    radio.value = count;
+    radio.required = true;
     input.name = `${prefix}[]`;
     input.required = true;
-    input.placeholder = `Opcion ${count}`;
+    input.placeholder = `Opcion ${count + 1}`;
+    label.append(radio);
     label.append(input);
+    label.insertAdjacentHTML('beforeend', '<span>Correcta</span>');
     list.append(label);
     input.focus();
 };

@@ -15,6 +15,7 @@ class TestPregunta extends Model
         'pregunta',
         'tipo',
         'opciones',
+        'respuesta_correcta',
         'puntaje_maximo',
         'orden',
     ];

@@ -142,6 +142,7 @@ class ReclutamientoController extends Controller
             'opciones' => ['nullable', 'array'],
             'opciones.*' => ['nullable', 'string', 'max:255'],
             'opciones_texto' => ['nullable', 'string'],
+            'respuesta_correcta' => ['required'],
             'puntaje_maximo' => ['required', 'numeric', 'min:1', 'max:100'],
             'orden' => ['required', 'integer', 'min:1'],
         ]);
@@ -160,6 +161,7 @@ class ReclutamientoController extends Controller
             'preguntas.*.pregunta' => ['required', 'string'],
             'preguntas.*.opciones' => ['required', 'array', 'min:2'],
             'preguntas.*.opciones.*' => ['required', 'string', 'max:255'],
+            'preguntas.*.respuesta_correcta' => ['required'],
             'preguntas.*.puntaje_maximo' => ['required', 'numeric', 'min:1', 'max:100'],
             'preguntas.*.orden' => ['required', 'integer', 'min:1'],
         ]);
@@ -185,13 +187,33 @@ class ReclutamientoController extends Controller
             ]);
         }
 
+        $correctAnswer = $this->resolveCorrectAnswer($data['respuesta_correcta'] ?? null, $opciones);
+
         return [
             'pregunta' => $data['pregunta'],
             'tipo' => 'OPCION_MULTIPLE',
             'opciones' => $opciones,
+            'respuesta_correcta' => $correctAnswer,
             'puntaje_maximo' => $data['puntaje_maximo'],
             'orden' => $data['orden'],
         ];
+    }
+
+    private function resolveCorrectAnswer(mixed $value, array $opciones): string
+    {
+        if (is_numeric($value) && array_key_exists((int) $value, $opciones)) {
+            return $opciones[(int) $value];
+        }
+
+        $value = trim((string) $value);
+
+        if (in_array($value, $opciones, true)) {
+            return $value;
+        }
+
+        throw \Illuminate\Validation\ValidationException::withMessages([
+            'respuesta_correcta' => 'Debe seleccionar una respuesta correcta valida.',
+        ]);
     }
 
     private function audit(string $action, string $detail, Request $request): void

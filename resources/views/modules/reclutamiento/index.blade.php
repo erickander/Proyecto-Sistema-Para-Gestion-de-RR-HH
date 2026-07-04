@@ -205,8 +205,16 @@
                                                 <div class="option-builder" data-option-builder data-option-prefix="preguntas[0][opciones]">
                                                     <span>Opciones de respuesta</span>
                                                     <div data-options-list>
-                                                        <label><input name="preguntas[0][opciones][]" required placeholder="Opcion 1"></label>
-                                                        <label><input name="preguntas[0][opciones][]" required placeholder="Opcion 2"></label>
+                                                        <label class="option-row">
+                                                            <input type="radio" name="preguntas[0][respuesta_correcta]" value="0" required>
+                                                            <input name="preguntas[0][opciones][]" required placeholder="Opcion 1">
+                                                            <span>Correcta</span>
+                                                        </label>
+                                                        <label class="option-row">
+                                                            <input type="radio" name="preguntas[0][respuesta_correcta]" value="1" required>
+                                                            <input name="preguntas[0][opciones][]" required placeholder="Opcion 2">
+                                                            <span>Correcta</span>
+                                                        </label>
                                                     </div>
                                                     <button class="btn-light" type="button" data-add-option>Agregar opcion</button>
                                                 </div>
@@ -231,8 +239,16 @@
                                                 <div class="option-builder" data-option-builder data-option-prefix="preguntas[__INDEX__][opciones]">
                                                     <span>Opciones de respuesta</span>
                                                     <div data-options-list>
-                                                        <label><input name="preguntas[__INDEX__][opciones][]" required placeholder="Opcion 1"></label>
-                                                        <label><input name="preguntas[__INDEX__][opciones][]" required placeholder="Opcion 2"></label>
+                                                        <label class="option-row">
+                                                            <input type="radio" name="preguntas[__INDEX__][respuesta_correcta]" value="0" required>
+                                                            <input name="preguntas[__INDEX__][opciones][]" required placeholder="Opcion 1">
+                                                            <span>Correcta</span>
+                                                        </label>
+                                                        <label class="option-row">
+                                                            <input type="radio" name="preguntas[__INDEX__][respuesta_correcta]" value="1" required>
+                                                            <input name="preguntas[__INDEX__][opciones][]" required placeholder="Opcion 2">
+                                                            <span>Correcta</span>
+                                                        </label>
                                                     </div>
                                                     <button class="btn-light" type="button" data-add-option>Agregar opcion</button>
                                                 </div>
@@ -246,6 +262,7 @@
                                                 <article class="question-item-card">
                                                     <div>
                                                         <strong>{{ $pregunta->orden }}. {{ $pregunta->pregunta }}</strong>
+                                                        <span>Correcta: {{ $pregunta->respuesta_correcta ?: 'Sin definir' }}</span>
                                                         <span>{{ count($pregunta->opciones ?? []) }} opciones · {{ number_format($pregunta->puntaje_maximo, 2) }} pts</span>
                                                     </div>
                                                     <div class="inline-actions">
@@ -308,11 +325,23 @@
                                             <span>Opciones de respuesta</span>
                                             <div data-options-list>
                                                 @foreach($pregunta->opciones ?? [] as $opcion)
-                                                    <label><input name="opciones[]" value="{{ $opcion }}" required></label>
+                                                    <label class="option-row">
+                                                        <input type="radio" name="respuesta_correcta" value="{{ $loop->index }}" @checked($pregunta->respuesta_correcta === $opcion) required>
+                                                        <input name="opciones[]" value="{{ $opcion }}" required>
+                                                        <span>Correcta</span>
+                                                    </label>
                                                 @endforeach
                                                 @if(count($pregunta->opciones ?? []) < 2)
-                                                    <label><input name="opciones[]" required placeholder="Opcion 1"></label>
-                                                    <label><input name="opciones[]" required placeholder="Opcion 2"></label>
+                                                    <label class="option-row">
+                                                        <input type="radio" name="respuesta_correcta" value="0" required>
+                                                        <input name="opciones[]" required placeholder="Opcion 1">
+                                                        <span>Correcta</span>
+                                                    </label>
+                                                    <label class="option-row">
+                                                        <input type="radio" name="respuesta_correcta" value="1" required>
+                                                        <input name="opciones[]" required placeholder="Opcion 2">
+                                                        <span>Correcta</span>
+                                                    </label>
                                                 @endif
                                             </div>
                                             <button class="btn-light" type="button" data-add-option>Agregar opcion</button>

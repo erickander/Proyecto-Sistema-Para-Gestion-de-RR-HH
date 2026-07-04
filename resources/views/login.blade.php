@@ -38,6 +38,8 @@
             <p class="login-link">
                 <a href="{{ route('password.request') }}">Recuperar contrasena</a>
             </p>
+
+            <a class="home-link" href="{{ route('portal.index') }}">Volver a la pagina principal</a>
         </form>
     </div>
 </div>

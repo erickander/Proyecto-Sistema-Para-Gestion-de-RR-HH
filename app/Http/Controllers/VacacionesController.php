@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Auditoria;
+use App\Models\Notificacion;
 use App\Models\SolicitudVacacion;
 use Illuminate\Http\Request;
 
@@ -63,6 +64,7 @@ class VacacionesController extends Controller
         ]);
 
         $this->audit('APROBAR_SOLICITUD', 'Solicitud aprobada ID '.$solicitud->id_solicitud, $request);
+        $this->notifyEmployee($solicitud, 'Solicitud aprobada', 'Su solicitud de '.$solicitud->tipo_solicitud.' del '.$solicitud->fecha_inicio?->format('Y-m-d').' al '.$solicitud->fecha_fin?->format('Y-m-d').' fue aprobada.');
 
         return back()->with('status', 'Solicitud aprobada.');
     }
@@ -77,8 +79,28 @@ class VacacionesController extends Controller
         ]);
 
         $this->audit('RECHAZAR_SOLICITUD', 'Solicitud rechazada ID '.$solicitud->id_solicitud, $request);
+        $this->notifyEmployee($solicitud, 'Solicitud rechazada', 'Su solicitud de '.$solicitud->tipo_solicitud.' del '.$solicitud->fecha_inicio?->format('Y-m-d').' al '.$solicitud->fecha_fin?->format('Y-m-d').' fue rechazada.');
 
         return back()->with('status', 'Solicitud rechazada.');
+    }
+
+    private function notifyEmployee(SolicitudVacacion $solicitud, string $title, string $message): void
+    {
+        $solicitud->loadMissing('empleado');
+        $userId = $solicitud->empleado?->id_usuario;
+
+        if (! $userId) {
+            return;
+        }
+
+        Notificacion::create([
+            'id_usuario' => $userId,
+            'titulo' => $title,
+            'mensaje' => $message,
+            'tipo' => 'VACACIONES',
+            'leida' => false,
+            'fecha_envio' => now(),
+        ]);
     }
 
     private function audit(string $action, string $detail, Request $request): void

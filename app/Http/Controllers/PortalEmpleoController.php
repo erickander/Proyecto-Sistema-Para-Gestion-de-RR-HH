@@ -5,8 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Candidato;
 use App\Models\Postulacion;
 use App\Models\Vacante;
-use App\Services\GeminiCvAnalyzer;
-use Illuminate\Http\UploadedFile;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -41,42 +40,77 @@ class PortalEmpleoController extends Controller
 
         $vacante->load('testActivo.preguntas');
         $test = $vacante->testActivo;
-
-        $data = $request->validate([
-            'nombres' => ['required', 'string', 'max:100'],
-            'apellidos' => ['required', 'string', 'max:100'],
-            'cedula' => ['nullable', 'string', 'max:20'],
-            'correo' => ['required', 'email', 'max:150'],
-            'telefono' => ['nullable', 'string', 'max:30'],
-            'direccion' => ['nullable', 'string', 'max:255'],
-            'cv' => ['required', 'file', 'mimes:pdf', 'max:5120'],
-            'consentimiento_ia' => ['accepted'],
+        $request->merge([
+            'nombres' => trim((string) $request->input('nombres')),
+            'apellidos' => trim((string) $request->input('apellidos')),
+            'cedula' => $request->filled('cedula') ? trim((string) $request->input('cedula')) : null,
+            'correo' => Str::lower(trim((string) $request->input('correo'))),
+            'telefono' => $request->filled('telefono') ? trim((string) $request->input('telefono')) : null,
+            'direccion' => $request->filled('direccion') ? trim((string) $request->input('direccion')) : null,
         ]);
 
-        $path = $request->file('cv')->store('cvs', 'public');
+        $data = $request->validate([
+            'nombres' => ['required', 'string', 'min:2', 'max:100'],
+            'apellidos' => ['required', 'string', 'min:2', 'max:100'],
+            'cedula' => ['nullable', 'string', 'min:6', 'max:20', 'regex:/^[0-9A-Za-z-]+$/'],
+            'correo' => ['required', 'email', 'max:150'],
+            'telefono' => ['nullable', 'string', 'min:7', 'max:30'],
+            'direccion' => ['nullable', 'string', 'min:5', 'max:255'],
+            'cv' => ['required', 'file', 'mimes:pdf', 'max:5120'],
+            'consentimiento_ia' => ['accepted'],
+        ], [
+            'nombres.required' => 'Ingrese sus nombres.',
+            'nombres.min' => 'Los nombres deben tener al menos :min caracteres.',
+            'apellidos.required' => 'Ingrese sus apellidos.',
+            'apellidos.min' => 'Los apellidos deben tener al menos :min caracteres.',
+            'cedula.min' => 'La cedula debe tener al menos :min caracteres.',
+            'cedula.regex' => 'La cedula solo puede contener letras, numeros o guiones.',
+            'correo.required' => 'Ingrese su correo.',
+            'correo.email' => 'Ingrese un correo valido.',
+            'telefono.min' => 'El telefono debe tener al menos :min caracteres.',
+            'direccion.min' => 'La direccion debe tener al menos :min caracteres.',
+            'cv.required' => 'Debe cargar su CV en PDF.',
+            'cv.file' => 'El CV debe ser un archivo valido.',
+            'cv.mimes' => 'El CV debe estar en formato PDF.',
+            'cv.max' => 'El CV no debe superar 5 MB.',
+            'consentimiento_ia.accepted' => 'Debe autorizar el analisis IA para continuar.',
+        ]);
 
-        $candidato = Candidato::updateOrCreate(
-            ['correo' => $data['correo']],
-            [
+        $candidato = $this->validatedCandidateForVacancy($data, $vacante);
+
+        $path = null;
+
+        try {
+            $path = $request->file('cv')->store('cvs', 'public');
+
+            $candidato->fill([
                 'nombres' => $data['nombres'],
                 'apellidos' => $data['apellidos'],
-                'cedula' => $data['cedula'],
-                'telefono' => $data['telefono'],
-                'direccion' => $data['direccion'],
+                'cedula' => $data['cedula'] ?: $candidato->cedula,
+                'telefono' => $data['telefono'] ?: $candidato->telefono,
+                'direccion' => $data['direccion'] ?: $candidato->direccion,
                 'cv_url' => $path,
                 'fecha_registro' => now(),
                 'estado' => 'ACTIVO',
-            ]
-        );
+            ])->save();
 
-        $postulacion = Postulacion::create([
-            'id_candidato' => $candidato->id_candidato,
-            'id_vacante' => $vacante->id_vacante,
-            'fecha_postulacion' => now(),
-            'estado' => 'RECIBIDA',
-            'observaciones' => 'Postulacion registrada desde portal publico.',
-            'token_test' => Str::random(48),
-        ]);
+            $postulacion = Postulacion::create([
+                'id_candidato' => $candidato->id_candidato,
+                'id_vacante' => $vacante->id_vacante,
+                'fecha_postulacion' => now(),
+                'estado' => 'RECIBIDA',
+                'observaciones' => 'Postulacion registrada desde portal publico.',
+                'token_test' => Str::random(48),
+            ]);
+        } catch (QueryException) {
+            if ($path) {
+                Storage::disk('public')->delete($path);
+            }
+
+            throw ValidationException::withMessages([
+                'correo' => 'No se pudo registrar la postulacion porque ya existen datos similares. Revise correo, cedula o vuelva a intentarlo.',
+            ]);
+        }
 
         if ($test && $test->preguntas->isNotEmpty()) {
             return redirect()->route('portal.test.show', [
@@ -86,6 +120,46 @@ class PortalEmpleoController extends Controller
         }
 
         return redirect()->route('portal.gracias')->with('status', 'Postulacion enviada. RRHH debe activar un test para completar el analisis IA.');
+    }
+
+    private function validatedCandidateForVacancy(array $data, Vacante $vacante): Candidato
+    {
+        $candidateByEmail = Candidato::where('correo', $data['correo'])->first();
+        $candidateByDocument = empty($data['cedula'])
+            ? null
+            : Candidato::where('cedula', $data['cedula'])->first();
+
+        if ($candidateByDocument && $candidateByEmail && $candidateByDocument->id_candidato !== $candidateByEmail->id_candidato) {
+            throw ValidationException::withMessages([
+                'cedula' => 'La cedula ingresada ya esta registrada con otro correo.',
+                'correo' => 'El correo ingresado pertenece a otro candidato.',
+            ]);
+        }
+
+        if ($candidateByDocument && ! $candidateByEmail) {
+            throw ValidationException::withMessages([
+                'cedula' => 'La cedula ingresada ya esta registrada. Use el mismo correo con el que se postulo anteriormente.',
+            ]);
+        }
+
+        if ($candidateByEmail && $candidateByEmail->cedula && ! empty($data['cedula']) && $candidateByEmail->cedula !== $data['cedula']) {
+            throw ValidationException::withMessages([
+                'cedula' => 'La cedula no coincide con el correo registrado.',
+            ]);
+        }
+
+        $candidate = $candidateByEmail ?? new Candidato(['correo' => $data['correo']]);
+
+        if ($candidate->exists && Postulacion::where('id_candidato', $candidate->id_candidato)
+            ->where('id_vacante', $vacante->id_vacante)
+            ->whereNotIn('estado', ['RECHAZADA', 'rechazada'])
+            ->exists()) {
+            throw ValidationException::withMessages([
+                'correo' => 'Ya existe una postulacion activa con este correo para esta vacante.',
+            ]);
+        }
+
+        return $candidate;
     }
 
     public function showTest(Postulacion $postulacion, string $token)
@@ -100,7 +174,7 @@ class PortalEmpleoController extends Controller
         return view('portal.test', compact('postulacion', 'test'));
     }
 
-    public function submitTest(Request $request, Postulacion $postulacion, string $token, GeminiCvAnalyzer $analyzer)
+    public function submitTest(Request $request, Postulacion $postulacion, string $token)
     {
         $this->authorizeTestToken($postulacion, $token);
 
@@ -110,30 +184,35 @@ class PortalEmpleoController extends Controller
 
         $respuestas = $this->validatedTestResponses($request, $test);
 
+        $puntajeObtenido = 0;
+        $puntajeMaximo = 0;
+
         foreach ($respuestas as $idPregunta => $respuesta) {
+            $pregunta = $test->preguntas->firstWhere('id_pregunta', $idPregunta);
+            $esCorrecta = $pregunta && $respuesta === $pregunta->respuesta_correcta;
+            $puntaje = $esCorrecta ? (float) $pregunta->puntaje_maximo : 0;
+            $puntajeObtenido += $puntaje;
+            $puntajeMaximo += (float) ($pregunta?->puntaje_maximo ?? 0);
+
             $postulacion->respuestasTest()->updateOrCreate(
                 ['id_pregunta' => $idPregunta],
-                ['respuesta' => $respuesta]
+                [
+                    'respuesta' => $respuesta,
+                    'es_correcta' => $esCorrecta,
+                    'puntaje_test' => $puntaje,
+                    'observacion_ia' => null,
+                ]
             );
         }
 
-        $cvPath = $postulacion->candidato?->cv_url;
-
-        if (! $cvPath || ! Storage::disk('public')->exists($cvPath)) {
-            return back()->withErrors(['cv' => 'No se encontro el CV asociado a la postulacion.']);
-        }
-
-        $absolutePath = Storage::disk('public')->path($cvPath);
-        $file = new UploadedFile($absolutePath, basename($absolutePath), 'application/pdf', null, true);
+        $calificacion = $puntajeMaximo > 0 ? round(($puntajeObtenido / $puntajeMaximo) * 100, 2) : 0;
 
         $postulacion->update([
             'fecha_test' => now(),
-            'observaciones' => 'Test completado desde portal publico. Analisis IA ejecutado.',
+            'observaciones' => 'Test completado desde portal publico. Pendiente de analisis IA por RRHH. Calificacion test: '.$calificacion.'/100.',
         ]);
 
-        $analyzer->analyze($postulacion->load('vacante', 'respuestasTest.pregunta'), $file);
-
-        return redirect()->route('portal.gracias')->with('status', 'Test enviado correctamente. RRHH revisara el resultado del analisis IA.');
+        return redirect()->route('portal.gracias')->with('status', 'Test enviado correctamente. Tu calificacion fue '.$calificacion.'/100. RRHH revisara tu postulacion y decidira si la envia a analisis IA.');
     }
 
     public function gracias()

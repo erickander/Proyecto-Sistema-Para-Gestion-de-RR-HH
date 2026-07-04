@@ -3,10 +3,74 @@
 @section('content')
 <div class="dashboard-header">
     <h1>IA y Analisis de Candidatos</h1>
-    <p>Ranking de candidatos analizados por Gemini con CV, test por vacante y decision de contratacion.</p>
+    <p>Ranking de candidatos analizados por el microservicio IA con CV, test por vacante y decision de contratacion.</p>
 </div>
 
 @if(session('status')) <div class="alert-success">{{ session('status') }}</div> @endif
+
+<div class="ai-loading-overlay" data-ai-loading-overlay hidden>
+    <div class="ai-loading-card" role="status" aria-live="polite">
+        <span class="ai-loading-spinner"></span>
+        <strong>Analizando con microservicio IA</strong>
+        <p>Estamos procesando el CV y las respuestas del test. Esto puede tardar unos segundos.</p>
+    </div>
+</div>
+
+<div class="table-container">
+    <h3>Postulaciones pendientes por enviar a IA</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Candidato</th>
+                <th>Vacante</th>
+                <th>Test</th>
+                <th>CV</th>
+                <th>Accion</th>
+            </tr>
+        </thead>
+        <tbody>
+            @forelse($pendientes as $postulacion)
+                @php($puntajeTest = $postulacion->respuestasTest->sum('puntaje_test'))
+                @php($puntajeMaximo = $postulacion->respuestasTest->sum(fn ($respuesta) => (float) ($respuesta->pregunta?->puntaje_maximo ?? 0)))
+                @php($calificacionTest = $puntajeMaximo > 0 ? round(($puntajeTest / $puntajeMaximo) * 100, 2) : 0)
+                <tr>
+                    <td>
+                        <strong>{{ $postulacion->candidato?->nombres }} {{ $postulacion->candidato?->apellidos }}</strong><br>
+                        {{ $postulacion->candidato?->correo }}
+                    </td>
+                    <td>{{ $postulacion->vacante?->titulo }}</td>
+                    <td>
+                        <span class="score-badge">{{ number_format($calificacionTest, 2) }}</span><br>
+                        <span class="muted-text">{{ $postulacion->respuestasTest->where('es_correcta', true)->count() }} / {{ $postulacion->respuestasTest->count() }} correctas</span>
+                    </td>
+                    <td>
+                        @if($postulacion->candidato?->cv_url)
+                            <a class="text-link" href="{{ asset('storage/'.$postulacion->candidato->cv_url) }}" target="_blank">Ver CV PDF</a>
+                        @else
+                            <span class="muted-text">Sin CV</span>
+                        @endif
+                    </td>
+                    <td class="actions-cell">
+                        <details class="action-drawer">
+                            <summary>Enviar a IA</summary>
+                            <form class="action-form" action="{{ route('ia.analyze', $postulacion) }}" method="POST" data-ai-loading>
+                                @csrf
+                                <label class="check-label">
+                                    <input type="checkbox" name="consentimiento" value="1" required>
+                                    Confirmo que RRHH autoriza enviar este CV y test al microservicio IA.
+                                </label>
+                                <button class="btn-primary" type="submit">Analizar con IA</button>
+                            </form>
+                        </details>
+                    </td>
+                </tr>
+            @empty
+                <tr><td colspan="5">No hay postulaciones pendientes para IA.</td></tr>
+            @endforelse
+        </tbody>
+    </table>
+    {{ $pendientes->links() }}
+</div>
 
 <div class="chart-card">
     <h3>Comparativa de mejores postulantes</h3>
@@ -143,43 +207,53 @@
                         </div>
                     </td>
                     <td class="actions-cell">
-                        <details class="action-drawer">
-                            <summary>Reanalizar CV y test</summary>
-                            <form class="action-form" action="{{ route('ia.reanalyze', $postulacion) }}" method="POST">
-                                @csrf
-                                <label class="check-label">
-                                    <input type="checkbox" name="consentimiento" value="1" required>
-                                    Confirmo que existe autorizacion para enviar este CV y respuestas del test a Gemini.
-                                </label>
-                                <button class="btn-primary" type="submit">Ejecutar reanalisis</button>
-                            </form>
-                        </details>
-                        @if(in_array($postulacion?->estado, ['APROBADA', 'RECHAZADA'], true))
-                            <span class="status-pill">{{ $postulacion->estado }}</span>
-                        @else
+                        <div class="decision-actions">
                             <details class="action-drawer">
-                                <summary>Contratar</summary>
-                                <form class="action-form" action="{{ route('ia.hire', $postulacion) }}" method="POST">
+                                <summary>Reanalizar</summary>
+                                <form class="action-form" action="{{ route('ia.reanalyze', $postulacion) }}" method="POST" data-ai-loading>
                                     @csrf
-                                    <label>Cargo<input name="cargo" placeholder="Cargo" value="{{ $postulacion?->vacante?->titulo }}" required></label>
-                                    <label>Salario<input type="number" step="0.01" name="salario_base" placeholder="Salario" value="{{ $postulacion?->vacante?->salario_ofrecido }}" required></label>
-                                    <label>Ingreso<input type="date" name="fecha_ingreso" value="{{ now()->format('Y-m-d') }}" required></label>
-                                    <label>Departamento
-                                        <select name="id_departamento">
-                                            <option value="">Departamento</option>
-                                            @foreach($departamentos as $departamento)
-                                                <option value="{{ $departamento->id_departamento }}">{{ $departamento->nombre_departamento }}</option>
-                                            @endforeach
-                                        </select>
+                                    <label class="check-label">
+                                        <input type="checkbox" name="consentimiento" value="1" required>
+                                        Confirmo que existe autorizacion para enviar este CV y respuestas del test al microservicio IA.
                                     </label>
-                                    <button class="btn-secondary" type="submit">Confirmar contratacion</button>
+                                    <button class="btn-primary" type="submit">Ejecutar reanalisis</button>
                                 </form>
                             </details>
-                            <form class="action-mini" action="{{ route('ia.reject', $postulacion) }}" method="POST">
+
+                            @if(in_array($postulacion?->estado, ['APROBADA', 'RECHAZADA'], true))
+                                <span class="status-pill">{{ $postulacion->estado }}</span>
+                            @else
+                                <details class="action-drawer">
+                                    <summary>Contratar</summary>
+                                    <form class="action-form" action="{{ route('ia.hire', $postulacion) }}" method="POST">
+                                        @csrf
+                                        <label>Cargo<input name="cargo" placeholder="Cargo" value="{{ $postulacion?->vacante?->titulo }}" required></label>
+                                        <label>Salario<input type="number" step="0.01" name="salario_base" placeholder="Salario" value="{{ $postulacion?->vacante?->salario_ofrecido }}" required></label>
+                                        <label>Ingreso<input type="date" name="fecha_ingreso" value="{{ now()->format('Y-m-d') }}" required></label>
+                                        <label>Departamento
+                                            <select name="id_departamento">
+                                                <option value="">Departamento</option>
+                                                @foreach($departamentos as $departamento)
+                                                    <option value="{{ $departamento->id_departamento }}">{{ $departamento->nombre_departamento }}</option>
+                                                @endforeach
+                                            </select>
+                                        </label>
+                                        <button class="btn-secondary" type="submit">Confirmar contratacion</button>
+                                    </form>
+                                </details>
+
+                                <form class="action-mini" action="{{ route('ia.reject', $postulacion) }}" method="POST">
+                                    @csrf
+                                    <button class="btn-danger" type="submit">Rechazar</button>
+                                </form>
+                            @endif
+
+                            <form class="action-mini" action="{{ route('ia.destroy', $item) }}" method="POST" data-confirm="Eliminar este analisis lo quitara del ranking y dejara la postulacion disponible para reenviar al microservicio IA.">
                                 @csrf
-                                <button class="btn-danger" type="submit">Rechazar</button>
+                                @method('DELETE')
+                                <button class="btn-danger btn-danger-soft" type="submit">Eliminar</button>
                             </form>
-                        @endif
+                        </div>
                     </td>
                 </tr>
             @empty

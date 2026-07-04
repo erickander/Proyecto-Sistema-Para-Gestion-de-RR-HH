@@ -35,10 +35,13 @@ return [
         ],
     ],
 
-    'gemini' => [
-        'key' => env('GEMINI_API_KEY'),
-        'model' => env('GEMINI_MODEL', 'gemini-1.5-flash'),
-        'ca_bundle' => env('GEMINI_CA_BUNDLE', 'certs/cacert.pem'),
+    'ai_analyzer' => [
+        'url' => env('AI_ANALYZER_URL', 'http://127.0.0.1:4101'),
+        'token' => env('AI_ANALYZER_TOKEN'),
+        'timeout' => env('AI_ANALYZER_TIMEOUT', 90),
+        'connect_timeout' => env('AI_ANALYZER_CONNECT_TIMEOUT', 10),
+        'php_time_limit' => env('AI_ANALYZER_PHP_TIME_LIMIT', 180),
+        'max_cv_chars' => env('AI_ANALYZER_MAX_CV_CHARS', 18000),
     ],
 
 ];

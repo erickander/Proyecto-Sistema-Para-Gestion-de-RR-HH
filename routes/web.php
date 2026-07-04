@@ -28,34 +28,3 @@ Route::middleware('auth')->group(function () {
     require __DIR__.'/ia.php';
     require __DIR__.'/perfil.php';
 });
-Route::get('/test-gemini', function () {
-
-    $apiKey = env('GEMINI_API_KEY');
-
-    $response = Http::withoutVerifying()->post(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$apiKey}",
-        [
-            "contents" => [
-                [
-                    "parts" => [
-                        [
-                            "text" => "Responde solo FUNCIONANDO"
-                        ]
-                    ]
-                ]
-            ]
-        ]
-    );
-
-    return $response->json();
-
-});
-Route::get('/gemini-modelos', function () {
-    $apiKey = env('GEMINI_API_KEY');
-
-    $response = Http::withoutVerifying()->get(
-        "https://generativelanguage.googleapis.com/v1beta/models?key={$apiKey}"
-    );
-
-    return $response->json();
-});

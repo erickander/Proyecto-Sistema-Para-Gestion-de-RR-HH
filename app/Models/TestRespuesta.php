@@ -14,6 +14,8 @@ class TestRespuesta extends Model
         'id_postulacion',
         'id_pregunta',
         'respuesta',
+        'es_correcta',
+        'puntaje_test',
         'puntaje_ia',
         'observacion_ia',
     ];
@@ -21,6 +23,8 @@ class TestRespuesta extends Model
     protected function casts(): array
     {
         return [
+            'es_correcta' => 'boolean',
+            'puntaje_test' => 'decimal:2',
             'puntaje_ia' => 'decimal:2',
         ];
     }

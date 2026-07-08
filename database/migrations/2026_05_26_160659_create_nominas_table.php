@@ -11,17 +11,21 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('tbl_nominas', function (Blueprint $table) {
-            $table->id('id_nomina');
-            $table->foreignId('id_empleado')->constrained('tbl_empleados', 'id_empleado')->cascadeOnDelete();
-            $table->decimal('sueldo_base', 10, 2)->default(0);
-            $table->decimal('horas_extras', 10, 2)->default(0);
-            $table->decimal('bonificaciones', 10, 2)->default(0);
-            $table->decimal('descuentos', 10, 2)->default(0);
-            $table->decimal('iess', 10, 2)->default(0);
-            $table->decimal('sueldo_neto', 10, 2)->default(0);
-            $table->date('fecha_pago');
-        });
+        if (! Schema::hasTable('tbl_nominas')) {
+            Schema::create('tbl_nominas', function (Blueprint $table) {
+                $table->id('id_nomina');
+                $table->foreignId('id_empleado')->constrained('tbl_empleados', 'id_empleado')->cascadeOnDelete();
+                $table->date('periodo_inicio');
+                $table->date('periodo_fin');
+                $table->decimal('salario_base', 10, 2)->default(0);
+                $table->decimal('horas_extra', 10, 2)->default(0);
+                $table->decimal('monto_horas_extra', 10, 2)->default(0);
+                $table->decimal('descuentos', 10, 2)->default(0);
+                $table->decimal('total_pagar', 10, 2)->default(0);
+                $table->enum('estado', ['BORRADOR', 'PENDIENTE', 'APROBADA', 'PAGADA'])->default('PENDIENTE');
+                $table->dateTime('fecha_generacion')->nullable();
+            });
+        }
     }
 
     /**

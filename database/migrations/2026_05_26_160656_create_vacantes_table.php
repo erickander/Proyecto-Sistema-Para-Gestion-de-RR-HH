@@ -11,15 +11,20 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('tbl_vacantes', function (Blueprint $table) {
-            $table->id('id_vacante');
-            $table->string('titulo', 150);
-            $table->text('descripcion');
-            $table->decimal('salario', 10, 2)->nullable();
-            $table->text('requisitos')->nullable();
-            $table->enum('estado', ['borrador', 'publicada', 'cerrada', 'cancelada'])->default('borrador');
-            $table->date('fecha_publicacion')->nullable();
-        });
+        if (! Schema::hasTable('tbl_vacantes')) {
+            Schema::create('tbl_vacantes', function (Blueprint $table) {
+                $table->id('id_vacante');
+                $table->foreignId('id_departamento')->nullable()->constrained('tbl_departamentos', 'id_departamento')->nullOnDelete();
+                $table->string('titulo', 150);
+                $table->text('descripcion');
+                $table->text('requisitos')->nullable();
+                $table->string('tipo_contrato', 50)->nullable();
+                $table->decimal('salario_ofrecido', 10, 2)->nullable();
+                $table->enum('estado', ['ABIERTA', 'CERRADA', 'PAUSADA'])->default('ABIERTA');
+                $table->dateTime('fecha_publicacion')->nullable();
+                $table->dateTime('fecha_cierre')->nullable();
+            });
+        }
     }
 
     /**

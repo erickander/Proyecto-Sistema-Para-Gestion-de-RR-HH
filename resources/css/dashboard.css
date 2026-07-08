@@ -2061,6 +2061,20 @@ table tbody tr:hover{
 
     .main-content{
         padding:18px;
+        max-width:100%;
+        overflow-x:hidden;
+    }
+
+    .table-container{
+        width:100%;
+        max-width:100%;
+        padding:14px;
+        overflow-x:auto;
+        -webkit-overflow-scrolling:touch;
+    }
+
+    table{
+        min-width:640px;
     }
 
     .split-header,

@@ -11,15 +11,20 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('tbl_candidatos', function (Blueprint $table) {
-            $table->id('id_candidato');
-            $table->string('nombres', 120);
-            $table->string('apellidos', 120);
-            $table->string('correo');
-            $table->string('telefono', 30)->nullable();
-            $table->string('cv')->nullable();
-            $table->text('experiencia')->nullable();
-        });
+        if (! Schema::hasTable('tbl_candidatos')) {
+            Schema::create('tbl_candidatos', function (Blueprint $table) {
+                $table->id('id_candidato');
+                $table->string('nombres', 120);
+                $table->string('apellidos', 120);
+                $table->string('cedula', 20)->nullable();
+                $table->string('correo', 150);
+                $table->string('telefono', 30)->nullable();
+                $table->string('direccion', 255)->nullable();
+                $table->string('cv_url')->nullable();
+                $table->dateTime('fecha_registro')->nullable();
+                $table->enum('estado', ['ACTIVO', 'DESCARTADO', 'CONTRATADO'])->default('ACTIVO');
+            });
+        }
     }
 
     /**

@@ -9,6 +9,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (! Schema::hasTable('tbl_test_preguntas') || ! Schema::hasTable('tbl_test_respuestas')) {
+            return;
+        }
+
         Schema::table('tbl_test_preguntas', function (Blueprint $table) {
             if (! Schema::hasColumn('tbl_test_preguntas', 'respuesta_correcta')) {
                 $table->string('respuesta_correcta', 255)->nullable();
